@@ -4,7 +4,8 @@ version = "0.1.0"
 authors = ["Andres O. Vela <andresovela@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 embedded-hal = "0.2.4"
+display-interface = "0.4.1"
+display-interface-parallel-gpio = "0.6.0"
+embedded-graphics = "0.7.1"
