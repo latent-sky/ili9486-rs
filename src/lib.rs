@@ -5,6 +5,7 @@ use core::iter;
 use display_interface::{DataFormat, DisplayError, WriteOnlyDataCommand};
 use embedded_hal::digital::v2::OutputPin;
 
+mod graphics;
 
 pub struct ILI9486<CSX, RSX, IF> {
     interface: IF,
