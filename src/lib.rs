@@ -3,6 +3,7 @@
 use core::iter;
 
 use display_interface::{DataFormat, DisplayError, WriteOnlyDataCommand};
+use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::digital::v2::OutputPin;
 
 mod graphics;
@@ -12,6 +13,11 @@ pub struct ILI9486<CSX, RSX, IF> {
     chip_select: CSX,
     reset: RSX,
     config: Config,
+}
+
+pub enum PixelFormat {
+    Rgb565,
+    Rgb666,
 }
 
 struct Config {
@@ -63,6 +69,38 @@ where
         })
     }
 
+    pub fn init<D: DelayMs<u32>>(&mut self, delay: &mut D) -> Result<(), DisplayError> {
+        self.disable()?;
+        // Reset as per the data sheet
+        //self.deassert_reset()?;
+        self.assert_reset()?;
+        delay.delay_ms(2);
+        //self.assert_reset()?;
+        self.deassert_reset()?;
+        delay.delay_ms(200);
+
+        self.enable()?;
+
+        for cmd_seq in INIT_SEQ.iter() {
+            let cmd = cmd_seq[0];
+            if cmd != TFTLCD_DELAY8 {
+                self.send_command_as_u8(cmd)?;
+                self.send_data(&cmd_seq[1..cmd_seq.len()])?;
+            } else {
+                let delay_time_ms = cmd_seq[1];
+                delay.delay_ms(delay_time_ms as u32);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn send_command_as_u8(&mut self, command_as_u8: u8) -> Result<(), DisplayError> {
+        //let data = [command_as_u8 as u8];
+        let data = [command_as_u8];
+        self.interface.send_commands(DataFormat::U8(&data))
+    }
+
     pub fn assert_reset(&mut self) -> Result<(), DisplayError> {
         self.reset.set_low().map_err(|_| DisplayError::RSError)
     }
@@ -102,7 +140,6 @@ where
         let mut column_data = [x0, x1];
         self.interface
             .send_data(DataFormat::U16BE(&mut column_data))?;
-
         self.send_command(Command::PageAddressSet)?;
         let mut page_data = [y0, y1];
         self.interface.send_data(DataFormat::U16BE(&mut page_data))
@@ -114,8 +151,7 @@ where
             PixelFormat::Rgb565 => 0x55,
             PixelFormat::Rgb666 => 0x66,
         };
-        self.send_data(&[format])?;
-        Ok(())
+        self.send_data(&[format])
     }
 
     pub fn set_orientation(&mut self, orientation: Orientation) -> Result<(), DisplayError> {
@@ -145,13 +181,21 @@ where
         self.config.orientation
     }
 
+    pub fn set_brightness(&mut self, brightness: u8) -> Result<(), DisplayError> {
+        self.send_command(Command::WriteDisplayBrightnessValue)?;
+        self.send_data(&[brightness])
+    }
+
     pub fn fill(&mut self, color: u16) -> Result<(), DisplayError> {
         let pixel_count: usize = self.config.width as usize * self.config.height as usize;
         let mut pixels = iter::repeat(color).take(pixel_count);
+
         self.set_window(0, 0, self.config.width, self.config.height)?;
+
         self.send_command(Command::MemoryWrite)?;
         self.interface
             .send_data(DataFormat::U16BEIter(&mut pixels))?;
+
         self.send_command(Command::Nop)
     }
 
@@ -171,6 +215,7 @@ pub enum Command {
     SoftReset = 0x01,
     SleepIn = 0x10,
     SleepOut = 0x11,
+    NormalDisplayMode = 0x13,
     DisplayInversionOff = 0x20,
     DisplayInversionOn = 0x21,
     DisplayOff = 0x28,
@@ -185,4 +230,34 @@ pub enum Command {
     InterfacePixelFormat = 0x3A,
     DisplayInversionControl = 0xB4,
     DisplayFunctionControl = 0xB6,
+
+    PowerControl2 = 0xC1,
+    PowerControl3 = 0xC2,
+    VCOMControl = 0xC5,
+    PositiveGammaControl = 0xE0,
+    NegativeGammaControl = 0xE1,
+
+    WriteDisplayBrightnessValue = 0x51,
 }
+
+// Initialization sequence adapted from an Arduino ESP32  library https://github.com/schreibfaul1/ESP32-TFT-Library-ILI9486/blob/master/src/ili9486.cpp
+const TFTLCD_DELAY8: u8 = 0x7F;
+#[rustfmt::skip]
+const INIT_SEQ: &[&[u8]] = &[
+        &[0x01], // Soft reset
+        &[TFTLCD_DELAY8, 120],// Required delay after soft reset (as per datasheet). FIXME this seems a hack. Find a better solution
+        &[0x11], // Sleep out
+        &[TFTLCD_DELAY8, 120],
+        &[0x3A, 0x55],// Interface Pixel Format
+        &[0xC2, 0x44],// Power Control 3 (For Normal Mode)
+        &[0xC5, 0x00, 0x00, 0x00, 0x00],// VCOM Control
+        &[0x13], // Normal Mode On 
+        &[0xE0, 0x0F,0x1F, 0x1C, 0x0C, 0x0F, 0x08, 0x48, 0x98, 0x37, 0x0A, 0x13, 0x04, 0x11, 0x0D, 0x00],// PGAMCTRL(Positive Gamma Control)
+        &[0xE1, 0x0F, 0x32, 0x2E, 0x0B, 0x0D, 0x05, 0x47, 0x75, 0x37, 0x06, 0x10, 0x03, 0x24, 0x20, 0x00],// NGAMCTRL (Negative Gamma Correction)
+        &[0x20], // Display Inversion OFF   RPi LCD (A)
+        // &[0x21], // Display Inversion ON    RPi LCD (B)
+        &[0x36, 0x48], // Memory Access Control
+        &[0x38],  //Idle Mode Off  
+        &[0x29], // Display On 
+        &[TFTLCD_DELAY8, 150],  // Delay after display on as per datasheet. FIXME this seems a hack. Find a better solution
+];

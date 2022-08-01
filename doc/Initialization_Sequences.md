@@ -1,0 +1,64 @@
+# Initialisation  Sequences
+
+The following initialisation sequences were tried, but did not seem to work. Kept here as they were difficult to derive and may be useful in the future.
+
+## LCDWIKI_KBV
+
+Initialization sequence adapted from board manufacturer code.
+
+```rust
+const TFTLCD_DELAY8: u8 = 0x7F;
+#[rustfmt::skip]
+const INIT_SEQ: &[&[u8]] = &[
+    &[0x00],   // After reset
+    &[0x00],// After reset
+    &[0x00],// After reset
+    &[0xF1, 0x36, 0x04, 0x00, 0x3C, 0x0F, 0x8F],
+    &[0xF2, 0x18, 0xA3, 0x12, 0x02, 0xB2, 0x12, 0xFF, 0x10, 0x00],
+    &[0xF8, 0x21, 0x04],
+    &[0xF9, 0x00, 0x08],
+    //&[0x36, 0x08],  // MemoryAccessControl   -- Commented out as MAC done in set_orientation()
+    &[0xB4, 0x00],  // DisplayInversionControl
+    &[0xC1, 0x41],  // PowerControl2
+    &[0xC5, 0x00, 0x91, 0x80, 0x00],  // VCOMControl
+    &[0xE0, 0x0F, 0x1F, 0x1C, 0x0C, 0x0F, 0x08, 0x48, 0x98, 0x37, 0x0A, 0x13, 0x04, 0x11, 0x0D, 0x00], // PositiveGammaControl
+    &[0xE1, 0x0F, 0x32, 0x2E, 0x0B, 0x0D, 0x05, 0x47, 0x75, 0x37, 0x06, 0x10, 0x03, 0x24, 0x20, 0x00], // NegativeGammaControl
+    &[0x3A, 0x55], //InterfacePixelFormat
+    &[0x11],       //SleepOut
+    //&[0x36, 0x28], //MemoryAccessControl    -- -- Commented out as MAC done in set_orientation()
+    &[TFTLCD_DELAY8, 120], // TFTLCD_DELAY8 expands to 0x7F. This causes a delay of 120 ms and is really a hack
+    &[0x29],  //DisplayOn
+];
+```
+
+
+## MCUFRIEND_kbv
+
+Initialization sequence adapted from MCUFRIEND_kbv.
+
+```rust
+const TFTLCD_DELAY8: u8 = 0x7F; // Keep for compatablity reasons - TODO maybe remove
+#[rustfmt::skip]
+const INIT_SEQ: &[&[u8]] = &[
+    //Reset off -> Line 3061
+    &[0x01],            //Soft Reset
+    &[TFTLCD_DELAY8, 150],  // .kbv will power up with ONLY reset, sleep out, display on
+    &[0x28],            //Display Off
+    &[0x3A, 0x55],      //Pixel read=565, write=565.
+    // --> Line 2825
+    &[0xC0, 0x0d, 0x0d],        //Power Control 1 [0E 0E]
+    &[0xC1, 0x43, 0x00],        //Power Control 2 [43 00]
+    &[0xC2, 0x00],      //Power Control 3 [33]
+    &[0xC5, 4, 0x00, 0x48, 0x00, 0x48],    //VCOM  Control 1 [00 40 00 40]
+    &[0xB4, 1, 0x00],      //Inversion Control [00]
+    &[0xB6, 3, 0x02, 0x02, 0x3B],  // Display Function Control [02 02 3B]
+        //  GAMMA9486 4 // 3.2 TM  3.2 Inch Initial Code not bad
+    &[0xE0, 0x0F, 0x21, 0x1C, 0x0B, 0x0E, 0x08, 0x49, 0x98, 0x38, 0x09, 0x11, 0x03, 0x14, 0x10, 0x00],
+    &[0xE1, 15, 0x0F, 0x2F, 0x2B, 0x0C, 0x0E, 0x06, 0x47, 0x76, 0x37, 0x07, 0x11, 0x04, 0x23, 0x1E, 0x00],
+    // Wake on -> Line 3067
+    &[0x11],            //Sleep Out
+    &[TFTLCD_DELAY8, 150],
+    &[0x29],            //Display On
+];
+```
+

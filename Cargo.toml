@@ -1,8 +1,11 @@
 [package]
 name = "ili9486"
-version = "0.1.0"
-authors = ["Andres O. Vela <andresovela@gmail.com>"]
-edition = "2018"
+version = "0.2.0"
+authors = [
+    "Andres O. Vela <andresovela@gmail.com>",
+    "Andrew Doble <http://github.com/adoble>",
+]
+edition = "2021"
 
 [dependencies]
 embedded-hal = "0.2.4"
