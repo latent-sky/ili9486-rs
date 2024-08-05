@@ -243,21 +243,11 @@ pub enum Command {
 // Initialization sequence adapted from an Arduino ESP32  library https://github.com/schreibfaul1/ESP32-TFT-Library-ILI9486/blob/master/src/ili9486.cpp
 const TFTLCD_DELAY8: u8 = 0x7F;
 #[rustfmt::skip]
+#[rustfmt::skip]
 const INIT_SEQ: &[&[u8]] = &[
-        &[0x01], // Soft reset
-        &[TFTLCD_DELAY8, 120],// Required delay after soft reset (as per datasheet). FIXME this seems a hack. Find a better solution
-        &[0x11], // Sleep out
-        &[TFTLCD_DELAY8, 120],
-        &[0x3A, 0x55],// Interface Pixel Format
-        &[0xC2, 0x44],// Power Control 3 (For Normal Mode)
-        &[0xC5, 0x00, 0x00, 0x00, 0x00],// VCOM Control
-        &[0x13], // Normal Mode On 
-        &[0xE0, 0x0F,0x1F, 0x1C, 0x0C, 0x0F, 0x08, 0x48, 0x98, 0x37, 0x0A, 0x13, 0x04, 0x11, 0x0D, 0x00],// PGAMCTRL(Positive Gamma Control)
-        &[0xE1, 0x0F, 0x32, 0x2E, 0x0B, 0x0D, 0x05, 0x47, 0x75, 0x37, 0x06, 0x10, 0x03, 0x24, 0x20, 0x00],// NGAMCTRL (Negative Gamma Correction)
-        &[0x20], // Display Inversion OFF   RPi LCD (A)
-        // &[0x21], // Display Inversion ON    RPi LCD (B)
-        &[0x36, 0x48], // Memory Access Control
-        &[0x38],  //Idle Mode Off  
-        &[0x29], // Display On 
-        &[TFTLCD_DELAY8, 150],  // Delay after display on as per datasheet. FIXME this seems a hack. Find a better solution
+    &[0x01], // Soft Reset
+    &[0x11], // Sleep Out
+    &[0x20], // Display Inversion Off
+    &[0x36, 0x48], // Memory Access Control
+    &[0x20, 0x02], // Display Inversion Off with specific data
 ];
